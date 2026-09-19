@@ -2,6 +2,33 @@
 import { useState, useRef, useEffect } from 'react';
 import type { StoryboardScene } from '@/lib/types';
 
+
+let globalAudioElement: HTMLAudioElement | null = null;
+function getGlobalAudio() {
+    if (typeof window !== 'undefined') {
+        if (!globalAudioElement) {
+            globalAudioElement = new Audio();
+            globalAudioElement.id = 'ai-global-audio';
+            document.body.appendChild(globalAudioElement);
+        }
+        return globalAudioElement;
+    }
+    return null;
+}
+
+function unlockAudio() {
+    const audio = getGlobalAudio();
+    if (audio) {
+        audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+        audio.play().catch(() => {});
+    }
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+        const u = new SpeechSynthesisUtterance('');
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+    }
+}
+
 export function useVoiceTutor(topic: string = "Basic Programming", language: string = "en") {
     const [state, setState] = useState<'IDLE' | 'CONNECTING' | 'RECORDING' | 'THINKING' | 'AI_SPEAKING' | 'WAITING_FOR_QUIZ' | 'ERROR'>('IDLE');
     const [scenes, setScenes] = useState<StoryboardScene[]>([]);
@@ -201,7 +228,8 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
                         
                         const blob = await res.blob();
                         const audioUrl = URL.createObjectURL(blob);
-                        const audio = new Audio(audioUrl);
+                        const audio = getGlobalAudio() || new Audio(audioUrl);
+                        audio.src = audioUrl;
                         currentAudioRef.current = audio;
                         
                         audio.onended = () => {
@@ -252,6 +280,7 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
     };
 
     async function startLesson(retryCount = 0) {
+        unlockAudio();
         setState('THINKING');
         try {
             const res = await fetch(`${getBaseUrl()}/api/start`, {
@@ -283,6 +312,7 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
     };
 
     async function sendToBackend(text: string, retryCount = 0) {
+        unlockAudio();
         setState('THINKING');
         setActiveQuiz(null);
         try {

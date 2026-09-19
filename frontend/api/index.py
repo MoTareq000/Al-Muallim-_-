@@ -98,6 +98,17 @@ def call_groq(messages, max_retries=3):
                 res.raise_for_status()
                 result = res.json()
                 content = result["choices"][0]["message"]["content"]
+                
+                # Strip markdown json blocks if the LLM wraps the response
+                content = content.strip()
+                if content.startswith("```json"):
+                    content = content[7:]
+                elif content.startswith("```"):
+                    content = content[3:]
+                if content.endswith("```"):
+                    content = content[:-3]
+                content = content.strip()
+                
                 data = json.loads(content)
                 return data
         except Exception as e:

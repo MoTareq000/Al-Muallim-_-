@@ -248,7 +248,7 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
     async function startLesson(retryCount = 0) {
         setState('THINKING');
         try {
-            const res = await fetch(`${getBaseUrl()}/start`, {
+            const res = await fetch(`${getBaseUrl()}/api/start`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ topic, language })
@@ -280,7 +280,7 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
         setState('THINKING');
         setActiveQuiz(null);
         try {
-            const res = await fetch(`${getBaseUrl()}/chat`, {
+            const res = await fetch(`${getBaseUrl()}/api/chat`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ message: text, history, language })

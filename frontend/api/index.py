@@ -110,7 +110,7 @@ def call_groq(messages, max_retries=3):
                 raise e
 
 
-@app.post("/start")
+@app.post("/api/start")
 async def start_lesson(req: StartRequest):
     system = SYSTEM_PROMPT + (ARABIC_PROMPT_ADDON if req.language == "ar" else "")
     prompt = f"Start a lesson about {req.topic}. Introduce yourself, explain the first concept, draw a diagram on the whiteboard, and ask if the student understands."
@@ -132,7 +132,7 @@ async def start_lesson(req: StartRequest):
         }
 
 
-@app.post("/chat")
+@app.post("/api/chat")
 async def chat(req: ChatRequest):
     system = SYSTEM_PROMPT + (ARABIC_PROMPT_ADDON if req.language == "ar" else "")
     

@@ -238,6 +238,9 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
         if (process.env.NEXT_PUBLIC_API_URL) {
             return process.env.NEXT_PUBLIC_API_URL;
         }
+        if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            return ''; // Use relative path on Vercel because of rewrites
+        }
         return typeof window !== 'undefined' ? `http://${window.location.hostname}:8000` : 'http://localhost:8000';
     };
 

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeCoach — Voice-Based AI Programming Tutor</title>
+    <meta name="description" content="Live audio-in, audio-out AI tutor teaching Grade 10 programming curriculum using Gemini Multimodal Live API.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- ── Error Notification Banner ── -->
+    <div id="error-banner" class="error-banner hidden">
+        <span>⚠️</span>
+        <span id="error-message">An error occurred</span>
+        <button id="close-error-btn" class="error-close-btn" aria-label="Dismiss error">&times;</button>
+    </div>
+
+    <!-- ── Audio Autoplay / Mic Permission Starter Overlay ── -->
+    <div id="audio-prompt" class="audio-prompt-overlay">
+        <div class="audio-prompt-card">
+            <div class="audio-prompt-icon">🎙️</div>
+            <h3>Welcome to CodeCoach</h3>
+            <p>Experience interactive, real-time voice tutoring powered by Gemini Multimodal Live API. Click below to initialize your microphone and speakers.</p>
+            <button id="start-audio-btn" class="primary-btn">Join Classroom</button>
+        </div>
+    </div>
+
+    <!-- ── Header ── -->
+    <header id="app-header">
+        <div class="logo">
+            <span class="logo-icon">✨</span>
+            <h1>CodeCoach</h1>
+        </div>
+        <div class="header-right">
+            <span class="badge-tag">Grade 10 Python</span>
+            <span id="state-label" class="state-badge badge-connecting">CONNECTING</span>
+        </div>
+    </header>
+
+    <!-- ── Curriculum Sidebar ── -->
+    <nav id="curriculum-sidebar" aria-label="Curriculum Units">
+        <div class="sidebar-title">
+            <span>📚</span>
+            <span>Curriculum</span>
+        </div>
+        <ol class="curriculum-list">
+            <li class="active" data-unit="1">
+                <span class="unit-num">01</span>
+                <span>Intro to Programming</span>
+            </li>
+            <li data-unit="2">
+                <span class="unit-num">02</span>
+                <span>Variables & Data Types</span>
+            </li>
+            <li data-unit="3">
+                <span class="unit-num">03</span>
+                <span>Operators & Expressions</span>
+            </li>
+            <li data-unit="4">
+                <span class="unit-num">04</span>
+                <span>Control Flow</span>
+            </li>
+            <li data-unit="5">
+                <span class="unit-num">05</span>
+                <span>Functions</span>
+            </li>
+            <li data-unit="6">
+                <span class="unit-num">06</span>
+                <span>Data Structures</span>
+            </li>
+            <li data-unit="7">
+                <span class="unit-num">07</span>
+                <span>Working with Strings</span>
+            </li>
+            <li data-unit="8">
+                <span class="unit-num">08</span>
+                <span>File Handling</span>
+            </li>
+            <li data-unit="9">
+                <span class="unit-num">09</span>
+                <span>Error Handling</span>
+            </li>
+            <li data-unit="10">
+                <span class="unit-num">10</span>
+                <span>Mini-Project</span>
+            </li>
+        </ol>
+    </nav>
+
+    <!-- ── Main Stage ── -->
+    <main id="main-stage">
+        <!-- Ambient lighting backdrop -->
+        <div class="ambient-light"></div>
+
+        <!-- Animated AI Voice Orb -->
+        <div id="orb-container" class="orb-container state-connecting">
+            <div id="orb" class="orb">
+                <div class="orb-ring ring-1"></div>
+                <div class="orb-ring ring-2"></div>
+                <div class="orb-ring ring-3"></div>
+                <div class="orb-core"></div>
+            </div>
+        </div>
+
+        <!-- Dynamic Visuals Container -->
+        <div id="visual-container" class="visual-container hidden"></div>
+
+        <!-- Status Text -->
+        <p id="status-text" class="status-text">🔌 Connecting to CodeCoach...</p>
+
+        <!-- Push-to-Talk Button -->
+        <div class="ptt-container">
+            <button id="ptt-button" class="ptt-button" disabled aria-label="Hold to speak">
+                <span class="ptt-icon">🎙️</span>
+            </button>
+            <span class="ptt-hint">Hold button or Space to speak</span>
+        </div>
+    </main>
+
+    <!-- ── Transcript Panel ── -->
+    <aside id="transcript-panel" aria-label="Live Transcript">
+        <div class="panel-header">
+            <h2>Live Dialogue</h2>
+            <span class="badge-tag">Audio Stream</span>
+        </div>
+        <div id="transcript" class="transcript-scroll">
+            <!-- Transcript bubbles will appear here -->
+        </div>
+    </aside>
+
+    <!-- ── Scripts ── -->
+    <script src="/static/audio-handler.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>

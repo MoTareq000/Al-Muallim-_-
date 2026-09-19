@@ -40,12 +40,12 @@ function LessonPageContent() {
   const isError = state === 'ERROR';
 
   const outlineItems = [
-    { title: "What Is Recursion?", duration: "3m", isQuiz: false },
-    { title: "The Call Stack In Action", duration: "3m", isQuiz: false },
-    { title: "Stack Overflow & Tail Recursion", duration: "3m", isQuiz: false },
-    { title: "Tree Recursion & Fibonacci", duration: "3m", isQuiz: false },
-    { title: "Recursion vs Iteration: Tradeoffs", duration: "3m", isQuiz: false },
-    { title: "Recursion Mastery Quiz", duration: "2m", isQuiz: true },
+    { title: `Introduction to ${course.category}`, duration: "2m", isQuiz: false },
+    { title: "Core Concepts & Variables", duration: "3m", isQuiz: false },
+    { title: "Visualizing the Architecture", duration: "4m", isQuiz: false },
+    { title: "Interactive Practice session", duration: "3m", isQuiz: false },
+    { title: "Common Mistakes to Avoid", duration: "2m", isQuiz: false },
+    { title: `${course.category} Mastery Quiz`, duration: "5m", isQuiz: true },
   ];
 
   // ── LANGUAGE SELECTION SCREEN ──

@@ -209,7 +209,10 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
                             resolve();
                         };
                         audio.onerror = () => resolve();
-                        audio.play();
+                        audio.play().catch(e => {
+                            console.error("Audio play failed:", e);
+                            resolve();
+                        });
                     } catch (e) {
                         console.error("TTS Fallback", e);
                         // Fallback to browser TTS if ElevenLabs fails
@@ -217,6 +220,9 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
                         utterance.onend = () => resolve();
                         utterance.onerror = () => resolve();
                         window.speechSynthesis.speak(utterance);
+                        
+                        // Safety timeout in case browser TTS silently fails
+                        setTimeout(resolve, Math.max(2000, step.text.length * 50));
                     }
                 });
             } else if (step.type === 'quiz' && step.question && step.options) {

@@ -42,6 +42,27 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
     const hasStartedRef = useRef<boolean>(false);
     const elapsedIntervalRef = useRef<any>(null);
     const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+    const timelineAbortRef = useRef<number>(0);
+
+    const stopCurrentAudio = () => {
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+        }
+        if (currentAudioRef.current) {
+            try {
+                currentAudioRef.current.pause();
+                currentAudioRef.current.currentTime = 0;
+            } catch (_) {}
+            currentAudioRef.current = null;
+        }
+        const globalAudio = getGlobalAudio();
+        if (globalAudio) {
+            try {
+                globalAudio.pause();
+                globalAudio.currentTime = 0;
+            } catch (_) {}
+        }
+    };
     
     // Persist whiteboard state across AI turns
     const nodePositionsRef = useRef<Map<string, { cx: number, cy: number }>>(new Map());
@@ -96,6 +117,10 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
     }, [topic]);
 
     const executeTimeline = async (timeline: any[]) => {
+        timelineAbortRef.current += 1;
+        const currentRunId = timelineAbortRef.current;
+        stopCurrentAudio();
+
         setState('AI_SPEAKING');
         setCurrentAiText('');
         setActiveQuiz(null);
@@ -110,8 +135,8 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
         let currentElapsed = elapsed; // Resume from current elapsed time
 
         for (const step of timeline) {
-            // Check if user interrupted the AI
-            if (!hasStartedRef.current && state !== 'AI_SPEAKING') break;
+            // Check if execution was aborted or superseded by a newer turn
+            if (timelineAbortRef.current !== currentRunId) return;
 
             if (step.type === 'draw' && step.command) {
                 let action = step.command.action;
@@ -298,7 +323,7 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
                     data.timeline.push({
                         type: 'quiz',
                         question: 'Would you like to continue?',
-                        options: ['Yes, let\\'s continue', 'What does that mean?']
+                        options: ["Yes, let's continue", "What does that mean?"]
                     });
                 }
                 setHistory([{ role: 'model', text: JSON.stringify(data.timeline) }]);
@@ -366,12 +391,10 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
     };
 
     const toggleRecording = () => {
+        timelineAbortRef.current += 1;
+        stopCurrentAudio();
+
         if (state === 'AI_SPEAKING' || state === 'WAITING_FOR_QUIZ') {
-            window.speechSynthesis.cancel();
-            if (currentAudioRef.current) {
-                currentAudioRef.current.pause();
-                currentAudioRef.current = null;
-            }
             setState('IDLE');
         } else if (state === 'RECORDING') {
             recognitionRef.current?.stop();

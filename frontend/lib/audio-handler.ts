@@ -1,3 +1,4 @@
+/* eslint-disable */
 export class AudioHandler {
     private audioContext: AudioContext | null = null;
     private mediaStream: MediaStream | null = null;

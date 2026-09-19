@@ -244,7 +244,7 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
         return typeof window !== 'undefined' ? `http://${window.location.hostname}:8000` : 'http://localhost:8000';
     };
 
-    const startLesson = async (retryCount = 0) => {
+    async function startLesson(retryCount = 0) {
         setState('THINKING');
         try {
             const res = await fetch(`${getBaseUrl()}/start`, {
@@ -275,7 +275,7 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
         }
     };
 
-    const sendToBackend = async (text: string, retryCount = 0) => {
+    async function sendToBackend(text: string, retryCount = 0) {
         setState('THINKING');
         setActiveQuiz(null);
         try {
@@ -310,7 +310,7 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
         }
     }
 
-    const submitQuiz = (answer: string) => {
+    function submitQuiz(answer: string) {
         const questionText = activeQuiz ? activeQuiz.question : "Multiple Choice Question";
         sendToBackend(`Question: ${questionText}\nMy Answer: ${answer}`);
     };

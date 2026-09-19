@@ -31,7 +31,7 @@ function LessonPageContent() {
   const [language, setLanguage] = useState<'en' | 'ar' | null>(null);
 
   // Only initialize the voice tutor after language is selected
-  const { state, scenes, elapsed, toggleRecording, transcript, activeQuiz, submitQuiz } = useVoiceTutor(
+  const { state, scenes, elapsed, toggleRecording, transcript, activeQuiz, submitQuiz, currentAiText } = useVoiceTutor(
     language ? course.title : "__WAIT__",
     language || "en"
   );
@@ -234,15 +234,15 @@ function LessonPageContent() {
                     {state === 'RECORDING' ? 'Listening' : state === 'THINKING' ? 'Thinking' : isAiSpeaking ? 'Explaining' : 'Ready'}
                   </span>
                 </div>
-                <p className="leading-snug font-medium text-sm">
+                <p className="leading-snug font-medium text-sm line-clamp-3">
                   {isError
                     ? "Connection Error!"
                     : isRecording
                       ? (transcript || '"Listening..." 🎙️')
                       : state === 'THINKING'
-                        ? '"Thinking about that..." 🧠'
+                        ? '"Thinking about that..." 🤔'
                         : isAiSpeaking
-                          ? '"Explaining on the board..." 💬'
+                          ? (currentAiText || '"Explaining on the board..." 💬')
                           : '"Click mic to talk!" 🚀'}
                 </p>
               </div>

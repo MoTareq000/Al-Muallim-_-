@@ -35,6 +35,7 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
     const [history, setHistory] = useState<any[]>([]);
     const [elapsed, setElapsed] = useState<number>(0);
     const [transcript, setTranscript] = useState<string>('');
+    const [currentAiText, setCurrentAiText] = useState<string>('');
     const [activeQuiz, setActiveQuiz] = useState<{question: string, options: string[]} | null>(null);
     
     const recognitionRef = useRef<any>(null);
@@ -96,6 +97,7 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
 
     const executeTimeline = async (timeline: any[]) => {
         setState('AI_SPEAKING');
+        setCurrentAiText('');
         setActiveQuiz(null);
         
         // Start an interval clock to drive animations smoothly if not running
@@ -202,6 +204,7 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
                 currentElapsed += 0.5;
                 await new Promise(r => setTimeout(r, 500));
             } else if (step.type === 'speak' && step.text) {
+                setCurrentAiText(step.text);
                 await new Promise<void>(async (resolve) => {
                     try {
                         const apiKey = process.env.NEXT_PUBLIC_ELEVENLABS_KEY || "";
@@ -269,21 +272,12 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
         setState(prevState => prevState === 'AI_SPEAKING' ? 'IDLE' : prevState);
     };
 
-    const getBaseUrl = () => {
-        if (process.env.NEXT_PUBLIC_API_URL) {
-            return process.env.NEXT_PUBLIC_API_URL;
-        }
-        if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-            return ''; // Use relative path on Vercel because of rewrites
-        }
-        return typeof window !== 'undefined' ? `http://${window.location.hostname}:8000` : 'http://localhost:8000';
-    };
-
+    
     async function startLesson(retryCount = 0) {
         unlockAudio();
         setState('THINKING');
         try {
-            const res = await fetch(`${getBaseUrl()}/api/start`, {
+            const res = await fetch(`/api/start`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ topic, language })
@@ -316,7 +310,7 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
         setState('THINKING');
         setActiveQuiz(null);
         try {
-            const res = await fetch(`${getBaseUrl()}/api/chat`, {
+            const res = await fetch(`/api/chat`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ message: text, history, language })
@@ -372,5 +366,5 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
         }
     };
 
-    return { state, scenes, elapsed, toggleRecording, transcript, activeQuiz, submitQuiz };
+    return { state, scenes, elapsed, toggleRecording, transcript, activeQuiz, submitQuiz, currentAiText };
 }

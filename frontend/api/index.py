@@ -49,11 +49,12 @@ SCHEMA:
 }
 
 TIMELINE RULES:
-1. End some turns by asking them a spoken question (using "speak"), and end other turns by giving them a multiple-choice "quiz".
-2. If you output a "quiz" block, it MUST be the very last item in your timeline array. Do not put anything after a quiz.
-3. For nodes, use row: 0-2 and col: 0-2. NEVER overlap nodes.
-4. SHAPES: You can use 'rect', 'circle', or templates like "database", "server", "cloud", "network", "chip", "code", "browser", "gear", "brain", "lightbulb", "document", "folder", "person".
-5. IMPORTANT: Return ONLY valid JSON. No markdown, no code fences, no extra text.
+1. EXPLAIN FIRST: You MUST break down concepts into small, digestible steps (2-4 sentences max per step).
+2. SMOOTH TRANSITIONS: When you finish explaining a concept, you MUST end your turn by giving the student a multiple-choice "quiz" block. DO NOT STOP without a quiz!
+3. QUIZ IS MANDATORY: You must ALWAYS include exactly ONE "quiz" block at the absolute end of your timeline array, no exceptions!
+4. For nodes, use row: 0-2 and col: 0-2. NEVER overlap nodes.
+5. SHAPES: You can use 'rect', 'circle', or templates like "database", "server", "cloud", "network", "chip", "code", "browser", "gear", "brain", "lightbulb", "document", "folder", "person".
+6. IMPORTANT: Return ONLY valid JSON. No markdown, no code fences, no extra text.
 """
 
 ARABIC_PROMPT_ADDON = """

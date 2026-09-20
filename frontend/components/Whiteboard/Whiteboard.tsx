@@ -195,13 +195,15 @@ export default function Whiteboard({
   const sandboxNotified = useRef<Set<string>>(new Set());
   const avatarIsSpeaking = isSpeaking && isCaptionSpeechActive(scenes, elapsed);
 
-  // Reset when the scene list changes (new lesson part loaded)
+  // Reset when the scene list is cleared
   useEffect(() => {
-    setVisible([]);
-    setCaption(null);
-    setCamera({ zoom: 1, offsetX: 0, offsetY: 0, transition: 'none' });
-    renderedIds.current.clear();
-    prevElapsed.current = -1;
+    if (scenes.length === 0) {
+      setVisible([]);
+      setCaption(null);
+      setCamera({ zoom: 1, offsetX: 0, offsetY: 0, transition: 'none' });
+      renderedIds.current.clear();
+      prevElapsed.current = -1;
+    }
   }, [scenes]);
 
   useEffect(() => {

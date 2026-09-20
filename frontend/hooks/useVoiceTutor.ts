@@ -116,6 +116,166 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
         }
     }, [topic]);
 
+    function parseDrawStep(cmd: any): StoryboardScene | null {
+        if (!cmd) return null;
+        let action = cmd.action;
+        let payload: any = cmd.payload || {};
+
+        if (action === 'clear_board' || action === 'clear') {
+            nodePositionsRef.current.clear();
+            drawnEdgesRef.current.clear();
+            setScenes([]);
+            return null;
+        }
+
+        if (action === 'draw_code' || action === 'draw_code_block' || cmd.code) {
+            action = 'draw_code_block';
+            const lang = cmd.language || 'python';
+            payload = {
+                code: cmd.code || '# Code snippet',
+                language: lang,
+                title: cmd.title || cmd.label || `lesson.${lang === 'python' ? 'py' : 'js'}`,
+                position: [140, 90],
+                width: 720,
+                height: 380,
+                highlight_lines: cmd.highlight_lines || [1, 2]
+            };
+        }
+        else if (action === 'add_node') {
+            const col = Math.max(0, Math.min(2, cmd.col || 0));
+            const row = Math.max(0, Math.min(2, cmd.row || 0));
+            // 1000x600 canvas
+            const cx = 200 + col * 300;
+            const cy = 130 + row * 170;
+            
+            nodePositionsRef.current.set(cmd.id, { cx, cy });
+
+            const shape = cmd.shape || 'rect';
+            const richObjects = ["cell", "network", "blockchain", "cycle", "gear", "document", "checklist", "triangle", "leaf", "flask", "lightbulb", "target", "book", "dialogue", "layers", "compass", "person", "users", "database", "server", "cloud", "folder", "shield", "lock", "key", "check", "cross", "brain", "money", "building", "globe", "envelope", "chip", "flag", "star", "warning", "gauge", "rocket", "handshake", "chart_up", "pencil_edit", "cog_icon", "clock", "search", "code"];
+            
+            if (richObjects.includes(shape)) {
+                action = 'draw_object';
+                const objWidth = 190;
+                const objHeight = 160;
+                payload = {
+                    object_type: shape,
+                    position: [cx - objWidth / 2, cy - objHeight / 2],
+                    size: [objWidth, objHeight],
+                    label: cmd.label || shape,
+                    accent: cmd.color || '#0062b1'
+                };
+            } else if (shape === 'circle') {
+                action = 'draw_circle';
+                payload = {
+                    center: [cx, cy],
+                    radius: 65,
+                    label: cmd.label,
+                    style: { stroke: cmd.color || '#0062b1', strokeWidth: 3, fill: '#f8fafc' }
+                };
+            } else {
+                action = 'draw_rect';
+                const width = 260;
+                const height = 95;
+                payload = {
+                    x: cx - width / 2,
+                    y: cy - height / 2,
+                    width,
+                    height,
+                    label: cmd.label,
+                    style: { stroke: cmd.color || '#0062b1', strokeWidth: 2.5, rx: 16, fill: '#ffffff' }
+                };
+            }
+        }
+        else if (action === 'add_edge') {
+            const edgeKey = `${cmd.from_id}->${cmd.to_id}`;
+            if (drawnEdgesRef.current.has(edgeKey)) {
+                return null;
+            }
+            drawnEdgesRef.current.add(edgeKey);
+
+            action = 'draw_arrow';
+            const fromNode = nodePositionsRef.current.get(cmd.from_id);
+            const toNode = nodePositionsRef.current.get(cmd.to_id);
+            if (fromNode && toNode) {
+                 let dx = toNode.cx - fromNode.cx;
+                 let dy = toNode.cy - fromNode.cy;
+                 const len = Math.sqrt(dx*dx + dy*dy);
+                 let startX = fromNode.cx; let startY = fromNode.cy;
+                 let endX = toNode.cx; let endY = toNode.cy;
+                 
+                 if (len > 0) {
+                     dx /= len; dy /= len;
+                     startX = fromNode.cx + dx * 85;
+                     startY = fromNode.cy + dy * 85;
+                     endX = toNode.cx - dx * 85;
+                     endY = toNode.cy - dy * 85;
+                 }
+
+                 payload = {
+                     from: [startX, startY],
+                     to: [endX, endY],
+                     label: cmd.label,
+                     style: { color: cmd.color || '#0062b1', strokeWidth: 3.5 }
+                 };
+            } else {
+                return null;
+            }
+        }
+
+        return {
+            id: `scene-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            action_type: action,
+            time_offset: 0, // Instant zero-delay rendering in Whiteboard
+            payload: payload
+        };
+    }
+
+    const playSpeech = (text: string): Promise<void> => {
+        return new Promise<void>(async (resolve) => {
+            try {
+                const apiKey = process.env.NEXT_PUBLIC_ELEVENLABS_KEY || "";
+                const voiceId = "pNInz6obpgDQGcFmaJgB";
+                const modelId = language === "ar" ? "eleven_multilingual_v2" : "eleven_turbo_v2_5";
+                
+                const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+                    method: "POST",
+                    headers: {
+                        "Accept": "audio/mpeg",
+                        "Content-Type": "application/json",
+                        "xi-api-key": apiKey
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        model_id: modelId,
+                        voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+                    })
+                });
+                
+                if (!res.ok) throw new Error("ElevenLabs API failed");
+                
+                const blob = await res.blob();
+                const audioUrl = URL.createObjectURL(blob);
+                const audio = getGlobalAudio() || new Audio(audioUrl);
+                audio.src = audioUrl;
+                currentAudioRef.current = audio;
+                
+                audio.onended = () => resolve();
+                audio.onerror = () => resolve();
+                audio.play().catch(e => {
+                    console.error("Audio play failed:", e);
+                    resolve();
+                });
+            } catch (e) {
+                console.error("TTS Fallback", e);
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.onend = () => resolve();
+                utterance.onerror = () => resolve();
+                window.speechSynthesis.speak(utterance);
+                setTimeout(resolve, Math.max(2000, text.length * 50));
+            }
+        });
+    };
+
     const executeTimeline = async (timeline: any[]) => {
         timelineAbortRef.current += 1;
         const currentRunId = timelineAbortRef.current;
@@ -132,167 +292,82 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
             }, 100);
         }
 
-        let currentElapsed = elapsed; // Resume from current elapsed time
+        // Group timeline steps into paired beats: [drawings to show] + [speech to hear] + [quiz if any]
+        // This guarantees all visual elements appear BEFORE or in EXACT LOCKSTEP with the speech!
+        const beats: { drawings: any[]; speakText: string | null; quiz: any | null }[] = [];
+        let pendingDrawings: any[] = [];
 
-        for (const step of timeline) {
-            // Check if execution was aborted or superseded by a newer turn
-            if (timelineAbortRef.current !== currentRunId) return;
-
+        for (let i = 0; i < timeline.length; i++) {
+            const step = timeline[i];
             if (step.type === 'draw' && step.command) {
-                let action = step.command.action;
-                let payload: any = step.command.payload || {};
-
-                if (action === 'clear_board') {
-                    action = 'clear';
-                    payload = {};
-                    nodePositionsRef.current.clear();
-                    drawnEdgesRef.current.clear();
-                    setScenes([]); // Clear the actual SVG drawings!
-                } 
-                else if (action === 'add_node') {
-                    const col = Math.max(0, Math.min(2, step.command.col || 0));
-                    const row = Math.max(0, Math.min(2, step.command.row || 0));
-                    // Updated math for 1000x600 canvas
-                    const cx = 160 + col * 340;
-                    const cy = 120 + row * 180;
-                    
-                    nodePositionsRef.current.set(step.command.id, { cx, cy });
-
-                    const shape = step.command.shape || 'rect';
-                    const richObjects = ["cell", "network", "blockchain", "cycle", "gear", "document", "checklist", "triangle", "leaf", "flask", "lightbulb", "target", "book", "dialogue", "layers", "compass", "person", "users", "database", "server", "cloud", "folder", "shield", "lock", "key", "check", "cross", "brain", "money", "building", "globe", "envelope", "chip", "flag", "star", "warning", "gauge", "rocket", "handshake", "chart_up", "pencil_edit", "cog_icon", "clock", "search"];
-                    
-                    if (richObjects.includes(shape)) {
-                        action = 'draw_object';
-                        const objWidth = 120;
-                        const objHeight = 120;
-                        payload = {
-                            object_type: shape,
-                            position: [cx - objWidth/2, cy - objHeight/2],
-                            size: [objWidth, objHeight],
-                            label: step.command.label,
-                            accent: step.command.color
-                        };
-                    } else if (shape === 'circle') {
-                        action = 'draw_circle';
-                        payload = { center: [cx, cy], radius: 45, label: step.command.label, style: { stroke: step.command.color } };
-                    } else {
-                        action = 'draw_rect';
-                        const width = 140;
-                        const height = 60;
-                        payload = { x: cx - width/2, y: cy - height/2, width, height, label: step.command.label, style: { stroke: step.command.color } };
-                    }
-                } 
-                else if (action === 'add_edge') {
-                    const edgeKey = `${step.command.from_id}->${step.command.to_id}`;
-                    if (drawnEdgesRef.current.has(edgeKey)) {
-                        continue;
-                    }
-                    drawnEdgesRef.current.add(edgeKey);
-
-                    action = 'draw_arrow';
-                    const fromNode = nodePositionsRef.current.get(step.command.from_id);
-                    const toNode = nodePositionsRef.current.get(step.command.to_id);
-                    if (fromNode && toNode) {
-                         let dx = toNode.cx - fromNode.cx;
-                         let dy = toNode.cy - fromNode.cy;
-                         const len = Math.sqrt(dx*dx + dy*dy);
-                         let startX = fromNode.cx; let startY = fromNode.cy;
-                         let endX = toNode.cx; let endY = toNode.cy;
-                         
-                         if (len > 0) {
-                             dx /= len; dy /= len;
-                             startX = fromNode.cx + dx * 55;
-                             startY = fromNode.cy + dy * 55;
-                             endX = toNode.cx - dx * 55;
-                             endY = toNode.cy - dy * 55;
-                         }
-
-                         payload = {
-                             from: [startX, startY],
-                             to: [endX, endY],
-                             label: step.command.label,
-                             style: { color: step.command.color || '#94a3b8', strokeWidth: 3 }
-                         };
-                    } else {
-                        continue;
-                    }
-                }
-
-                const scene: StoryboardScene = {
-                    id: `scene-${Date.now()}-${Math.random()}`,
-                    action_type: action,
-                    time_offset: currentElapsed,
-                    payload: payload
-                };
-                
-                setScenes(prev => [...prev, scene]);
-                currentElapsed += 0.5;
-                await new Promise(r => setTimeout(r, 500));
+                pendingDrawings.push(step.command);
             } else if (step.type === 'speak' && step.text) {
-                setCurrentAiText(step.text);
-                await new Promise<void>(async (resolve) => {
-                    try {
-                        const apiKey = process.env.NEXT_PUBLIC_ELEVENLABS_KEY || "";
-                        // Adam - strict but friendly educational voice
-                        const voiceId = "pNInz6obpgDQGcFmaJgB";
-                        // Use multilingual model for Arabic, turbo for English
-                        const modelId = language === "ar" ? "eleven_multilingual_v2" : "eleven_turbo_v2_5";
-                        
-                        const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-                            method: "POST",
-                            headers: {
-                                "Accept": "audio/mpeg",
-                                "Content-Type": "application/json",
-                                "xi-api-key": apiKey
-                            },
-                            body: JSON.stringify({
-                                text: step.text,
-                                model_id: modelId,
-                                voice_settings: { stability: 0.5, similarity_boost: 0.75 }
-                            })
-                        });
-                        
-                        if (!res.ok) throw new Error("ElevenLabs API failed");
-                        
-                        const blob = await res.blob();
-                        const audioUrl = URL.createObjectURL(blob);
-                        const audio = getGlobalAudio() || new Audio(audioUrl);
-                        audio.src = audioUrl;
-                        currentAudioRef.current = audio;
-                        
-                        audio.onended = () => {
-                            currentElapsed += 0.5;
-                            resolve();
-                        };
-                        audio.onerror = () => resolve();
-                        audio.play().catch(e => {
-                            console.error("Audio play failed:", e);
-                            resolve();
-                        });
-                    } catch (e) {
-                        console.error("TTS Fallback", e);
-                        // Fallback to browser TTS if ElevenLabs fails
-                        const utterance = new SpeechSynthesisUtterance(step.text);
-                        utterance.onend = () => resolve();
-                        utterance.onerror = () => resolve();
-                        window.speechSynthesis.speak(utterance);
-                        
-                        // Safety timeout in case browser TTS silently fails
-                        setTimeout(resolve, Math.max(2000, step.text.length * 50));
-                    }
+                // If the next immediate steps are also drawings, pull them into this beat
+                // so they appear immediately before/during this explanation
+                while (i + 1 < timeline.length && timeline[i + 1].type === 'draw' && timeline[i + 1].command) {
+                    i++;
+                    pendingDrawings.push(timeline[i].command);
+                }
+                beats.push({
+                    drawings: pendingDrawings,
+                    speakText: step.text,
+                    quiz: null
                 });
+                pendingDrawings = [];
             } else if (step.type === 'quiz' && step.question && step.options) {
-                setActiveQuiz({ question: step.question, options: step.options });
-                setState('WAITING_FOR_QUIZ');
-                return; // Stop timeline execution, wait for user input
+                beats.push({
+                    drawings: pendingDrawings,
+                    speakText: null,
+                    quiz: { question: step.question, options: step.options }
+                });
+                pendingDrawings = [];
             }
         }
-        
+
+        if (pendingDrawings.length > 0) {
+            beats.push({ drawings: pendingDrawings, speakText: null, quiz: null });
+        }
+
+        // Execute each beat in exact lockstep
+        for (const beat of beats) {
+            if (timelineAbortRef.current !== currentRunId) return;
+
+            // 1. RENDER ALL DRAWINGS FIRST (so the visual is already on the board before speech starts!)
+            if (beat.drawings.length > 0) {
+                const newScenes: StoryboardScene[] = [];
+                for (const cmd of beat.drawings) {
+                    const scene = parseDrawStep(cmd);
+                    if (scene) newScenes.push(scene);
+                }
+                if (newScenes.length > 0) {
+                    setScenes(prev => [...prev, ...newScenes]);
+                    // 150ms allows the drawing entrance animation to start popping on screen right as speech begins
+                    await new Promise(r => setTimeout(r, 150));
+                }
+            }
+
+            if (timelineAbortRef.current !== currentRunId) return;
+
+            // 2. PLAY SPOKEN EXPLANATION (while the visual is already visible on the whiteboard!)
+            if (beat.speakText) {
+                setCurrentAiText(beat.speakText);
+                await playSpeech(beat.speakText);
+            }
+
+            if (timelineAbortRef.current !== currentRunId) return;
+
+            // 3. SHOW QUIZ (if this beat has one)
+            if (beat.quiz) {
+                setActiveQuiz(beat.quiz);
+                setState('WAITING_FOR_QUIZ');
+                return;
+            }
+        }
+
         if (elapsedIntervalRef.current) {
             clearInterval(elapsedIntervalRef.current);
             elapsedIntervalRef.current = null;
         }
-        
         // Only set IDLE if we didn't end on a quiz
         setState(prevState => prevState === 'AI_SPEAKING' ? 'IDLE' : prevState);
     };

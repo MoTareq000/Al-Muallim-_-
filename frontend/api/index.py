@@ -33,7 +33,7 @@ CRITICAL RULES FOR PACING AND TEACHING:
 1. EVALUATE PREVIOUS ANSWER: If the user just answered a quiz, your very first "speak" block MUST evaluate their answer with encouraging feedback (e.g., "Correct! Because..." or "Not quite, because...").
 2. EXPLAIN FIRST, THEN ASK: Explain exactly ONE simple concept per turn. Use 2 to 4 sentences maximum. Never quiz before you have actually explained a concept.
 3. USE THE WHITEBOARD: Always pair your spoken explanation with 1-2 drawings on the 3x3 grid whiteboard.
-4. ALWAYS END WITH A QUIZ: The absolute LAST item in your timeline array MUST be a single multiple-choice "quiz" block with 3 clear options to check understanding. Never omit the quiz block.
+4. TEST UNDERSTANDING WHEN APPROPRIATE: Include a multiple-choice "quiz" block (with 3 clear options) when you want to test the student on what you just taught.
 
 You MUST respond with a JSON object containing a "timeline" array. This timeline interleaves what you say, what you draw, and interactive multiple-choice quizzes.
 
@@ -52,7 +52,7 @@ TIMELINE RULES:
 1. EXPLAIN FIRST: Break down concepts into small, digestible steps (2-4 sentences max per step).
 2. For nodes, use row: 0-2 and col: 0-2. Never place multiple nodes in the same cell.
 3. SHAPES: You can use 'rect', 'circle', or templates like "database", "server", "cloud", "network", "chip", "code", "browser", "gear", "brain", "lightbulb", "document", "folder", "person".
-4. QUIZ IS MANDATORY: Exactly ONE "quiz" block must exist at the very end of your timeline.
+4. QUIZ USAGE: When you include a "quiz" block, it MUST be the very last item in your timeline array. Do not put any speak or draw commands after a quiz.
 5. STRICT LANGUAGE: Speak the entire lesson in the language requested. Never switch languages halfway through.
 6. IMPORTANT: Return ONLY valid JSON. No markdown fences, no extra commentary.
 """
@@ -83,15 +83,10 @@ class ChatRequest(BaseModel):
 def sanitize_timeline(data: dict, language: str = "en") -> dict:
     """Validate and normalize LLM timeline output to guarantee client safety."""
     if not isinstance(data, dict) or "timeline" not in data or not isinstance(data["timeline"], list):
-        default_msg = "جاهز نكمل؟" if language == "ar" else "Ready to continue?"
+        default_msg = "لحظة واحدة..." if language == "ar" else "One moment..."
         return {
             "timeline": [
-                {"type": "speak", "text": default_msg},
-                {
-                    "type": "quiz",
-                    "question": "Ready to move to the next concept?" if language != "ar" else "جاهز للمفهوم اللي بعده؟",
-                    "options": ["Yes, let's continue!", "Explain more"] if language != "ar" else ["يلا نكمل!", "ممكن شرح أكتر؟"]
-                }
+                {"type": "speak", "text": default_msg}
             ]
         }
 
@@ -118,16 +113,9 @@ def sanitize_timeline(data: dict, language: str = "en") -> dict:
                     "options": [str(opt).strip() for opt in options[:4]]
                 }
 
-    # Ensure there is always a valid quiz at the end
+    # Only append a quiz if the model actually generated a legitimate quiz question
     if has_quiz and last_quiz:
         cleaned_timeline.append(last_quiz)
-    else:
-        continuation_quiz = {
-            "type": "quiz",
-            "question": "Ready to explore the next concept?" if language != "ar" else "جاهز للمفهوم اللي بعده؟",
-            "options": ["Yes, let's continue!", "Can you explain more?"] if language != "ar" else ["تمام، يلا نكمل!", "ممكن توضيح أكتر؟"]
-        }
-        cleaned_timeline.append(continuation_quiz)
 
     return {"timeline": cleaned_timeline}
 

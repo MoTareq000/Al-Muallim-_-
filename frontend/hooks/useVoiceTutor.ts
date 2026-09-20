@@ -317,15 +317,6 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
             }
 
             if (data.timeline) {
-                // Ensure there is always a quiz at the end to prevent the user from getting stuck
-                const hasQuiz = data.timeline.some((step: any) => step.type === 'quiz');
-                if (!hasQuiz) {
-                    data.timeline.push({
-                        type: 'quiz',
-                        question: 'Would you like to continue?',
-                        options: ["Yes, let's continue", "What does that mean?"]
-                    });
-                }
                 setHistory([{ role: 'model', text: JSON.stringify(data.timeline) }]);
                 await executeTimeline(data.timeline);
             } else setState('IDLE');
@@ -359,16 +350,6 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
             }
 
             if (data.timeline) {
-                // Ensure there is always a quiz at the end to prevent the user from getting stuck
-                const hasQuiz = data.timeline.some((step: any) => step.type === 'quiz');
-                if (!hasQuiz) {
-                    data.timeline.push({
-                        type: 'quiz',
-                        question: 'Would you like to continue?',
-                        options: ['Yes, please continue', 'Can you explain more?']
-                    });
-                }
-
                 setHistory(prev => [...prev, 
                     { role: 'user', text },
                     { role: 'model', text: JSON.stringify(data.timeline) }
@@ -408,5 +389,5 @@ export function useVoiceTutor(topic: string = "Basic Programming", language: str
         }
     };
 
-    return { state, scenes, elapsed, toggleRecording, transcript, activeQuiz, submitQuiz, currentAiText };
+    return { state, scenes, elapsed, toggleRecording, transcript, activeQuiz, submitQuiz, currentAiText, sendToBackend };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { initialCoursesData, Course } from "@/data/courses";
@@ -30,14 +30,58 @@ function LessonPageContent() {
   const [voiceDetected, setVoiceDetected] = useState(false);
   const [language, setLanguage] = useState<'en' | 'ar' | null>(null);
 
+  // Auto-advance countdown state
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [isAutoAdvancePaused, setIsAutoAdvancePaused] = useState(false);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   // Only initialize the voice tutor after language is selected
-  const { state, scenes, elapsed, toggleRecording, transcript, activeQuiz, submitQuiz, currentAiText } = useVoiceTutor(
+  const { state, scenes, elapsed, toggleRecording, transcript, activeQuiz, submitQuiz, currentAiText, sendToBackend } = useVoiceTutor(
     language ? course.title : "__WAIT__",
     language || "en"
   );
   const isRecording = state === 'RECORDING';
   const isAiSpeaking = state === 'AI_SPEAKING';
   const isError = state === 'ERROR';
+
+  // Auto-advance timer: smoothly transitions to next concept after 5s when tutor finishes
+  useEffect(() => {
+    if (state === 'IDLE' && !activeQuiz && !isError && language !== null && !isAutoAdvancePaused) {
+      setCountdown(5);
+
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev === null || prev <= 1) {
+            if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+            sendToBackend(language === 'ar' ? 'تمام، كمل للمفهوم اللي بعده.' : 'Great, continue to the next concept.');
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+      setCountdown(null);
+    }
+
+    return () => {
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
+  }, [state, activeQuiz, isError, language, isAutoAdvancePaused]);
+
+  const handleContinueNow = () => {
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    setCountdown(null);
+    sendToBackend(language === 'ar' ? 'تمام، كمل للمفهوم اللي بعده.' : 'Great, continue to the next concept.');
+  };
+
+  const togglePauseAutoAdvance = () => {
+    setIsAutoAdvancePaused((prev) => !prev);
+  };
 
   const outlineItems = [
     { title: `Introduction to ${course.category}`, duration: "2m", isQuiz: false },
@@ -166,7 +210,62 @@ function LessonPageContent() {
               </div>
 
               {/* Board Action Footer */}
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end">
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-4">
+                {/* Auto-Advance Pill (visible when AI finished talking and no quiz is blocking) */}
+                {state === 'IDLE' && !activeQuiz && !isError && (
+                  <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200/90 px-3.5 py-1.5 rounded-xl text-xs shadow-2xs animate-in fade-in duration-300">
+                    {!isAutoAdvancePaused && countdown !== null ? (
+                      <>
+                        <span className="flex h-2 w-2 relative">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#38a1f3]"></span>
+                        </span>
+                        <span className="text-slate-600 font-medium">
+                          {language === 'ar' ? `المفهوم القادم خلال ${countdown}ث...` : `Next concept in ${countdown}s...`}
+                        </span>
+                        <button
+                          onClick={handleContinueNow}
+                          className="font-bold text-[#0062b1] hover:text-blue-700 ml-1 hover:underline cursor-pointer"
+                        >
+                          {language === 'ar' ? 'كمل الآن ➔' : 'Continue now ➔'}
+                        </button>
+                        <span className="text-slate-300">|</span>
+                        <button
+                          onClick={togglePauseAutoAdvance}
+                          className="text-slate-400 hover:text-slate-600 cursor-pointer font-medium"
+                        >
+                          {language === 'ar' ? 'إيقاف مؤقت' : 'Pause'}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-slate-500 font-medium">
+                          {language === 'ar' ? 'التشغيل التلقائي متوقف' : 'Auto-advance paused'}
+                        </span>
+                        <button
+                          onClick={handleContinueNow}
+                          className="font-bold text-[#0062b1] hover:text-blue-700 ml-1 hover:underline cursor-pointer"
+                        >
+                          {language === 'ar' ? 'المفهوم التالي ➔' : 'Next concept ➔'}
+                        </button>
+                        <span className="text-slate-300">|</span>
+                        <button
+                          onClick={togglePauseAutoAdvance}
+                          className="text-slate-500 hover:text-[#0062b1] cursor-pointer font-semibold"
+                        >
+                          {language === 'ar' ? 'تشغيل' : 'Resume'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {state !== 'IDLE' && !activeQuiz && (
+                  <div className="text-xs text-slate-400 italic">
+                    {state === 'THINKING' ? (language === 'ar' ? 'جاري التحضير...' : 'Preparing lesson...') : ''}
+                  </div>
+                )}
+
                 <button
                   onClick={() => setCompleted(!completed)}
                   className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
